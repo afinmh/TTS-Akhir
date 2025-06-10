@@ -13,10 +13,10 @@ def load_audio_database(path):
     Database berbentuk dictionary: {'kata': ['path/ke/file1.wav', 'path/ke/file2.wav']}
     """
     audio_db = {}
-    print(f"🔄 Memuat database suara dari folder: '{path}'...")
+    print(f"Memuat database suara dari folder: '{path}'...")
     
     if not os.path.isdir(path):
-        print(f"❌ ERROR: Folder '{path}' tidak ditemukan. Pastikan folder sudah dibuat dan berisi file .wav.")
+        print(f"ERROR: Folder '{path}' tidak ditemukan. Pastikan folder sudah dibuat dan berisi file .wav.")
         return None
 
     for filename in os.listdir(path):
@@ -31,9 +31,9 @@ def load_audio_database(path):
             audio_db[word].append(full_path)
             
     if not audio_db:
-        print("❌ WARNING: Tidak ada file .wav yang ditemukan di dalam database.")
+        print("WARNING: Tidak ada file .wav yang ditemukan di dalam database.")
     else:
-        print(f"✅ Database berhasil dimuat. {len(audio_db)} kata unik ditemukan.")
+        print(f"Database berhasil dimuat. {len(audio_db)} kata unik ditemukan.")
 
     return audio_db
 
@@ -62,7 +62,7 @@ def synthesize_speech(text, db):
             final_audio += audio_segment
         else:
             # Jika kata tidak ditemukan, beri peringatan
-            print(f"   - ⚠️ Peringatan: Kata '{word}' tidak ditemukan dalam database. Kata ini akan dilewati.")
+            print(f"   - Peringatan: Kata '{word}' tidak ditemukan dalam database. Kata ini akan dilewati.")
             
     return final_audio
 
@@ -85,7 +85,7 @@ if __name__ == "__main__":
                 break
 
             if input_text.lower() == 'keluar':
-                print("👋 Sampai jumpa!")
+                print("Sampai jumpa!")
                 break
             
             if not input_text.strip():
@@ -96,7 +96,7 @@ if __name__ == "__main__":
             
             # 4. Putar hasilnya jika ada audio yang berhasil dibuat
             if len(synthesized_audio) > 0:
-                print("🎶 Memutar hasil suara...")
+                print("Memutar hasil suara...")
                 play(synthesized_audio)
             else:
-                print("🔇 Tidak ada suara yang dihasilkan karena semua kata tidak ditemukan.")
+                print("Tidak ada suara yang dihasilkan karena semua kata tidak ditemukan.")
