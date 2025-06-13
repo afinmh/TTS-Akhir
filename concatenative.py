@@ -1,102 +1,56 @@
 import os
-import random
 from pydub import AudioSegment
-from pydub.playback import play
 
-# --- KONFIGURASI ---
-# Sesuaikan path ini dengan nama folder tempat Anda menyimpan file .wav
-DATABASE_PATH = "database_suara" 
+# Path ke dataset training
+DATASET_PATH = 'datatrain'
+# Kata-kata unik (lowercase agar fleksibel input pengguna)
+word_list = ["aku", "kamu", "makan", "selamat", "siang", "malam", "pagi", "sore", "kita", "mereka"]
 
-def load_audio_database(path):
-    """
-    Memindai direktori dan membuat database kata dan path filenya.
-    Database berbentuk dictionary: {'kata': ['path/ke/file1.wav', 'path/ke/file2.wav']}
-    """
-    audio_db = {}
-    print(f"Memuat database suara dari folder: '{path}'...")
-    
-    if not os.path.isdir(path):
-        print(f"ERROR: Folder '{path}' tidak ditemukan. Pastikan folder sudah dibuat dan berisi file .wav.")
+# Pilih satu contoh terbaik dari masing-masing kata
+def select_best_sample(speaker_folder, word):
+    samples = [f for f in os.listdir(speaker_folder) if f.lower().startswith(word) and f.endswith('.wav')]
+    samples = sorted(samples)
+    if samples:
+        filepath = os.path.join(speaker_folder, samples[0])
+        return AudioSegment.from_wav(filepath)
+    else:
         return None
 
-    for filename in os.listdir(path):
-        if filename.endswith(".wav"):
-            # Ekstrak kata dari nama file (bagian sebelum underscore pertama)
-            word = filename.split('_')[0].lower()
-            
-            # Tambahkan path file ke dalam list untuk kata tersebut
-            full_path = os.path.join(path, filename)
-            if word not in audio_db:
-                audio_db[word] = []
-            audio_db[word].append(full_path)
-            
-    if not audio_db:
-        print("WARNING: Tidak ada file .wav yang ditemukan di dalam database.")
-    else:
-        print(f"Database berhasil dimuat. {len(audio_db)} kata unik ditemukan.")
-
-    return audio_db
-
-def synthesize_speech(text, db):
-    """
-    Menerima teks dan database, lalu menggabungkan audio kata per kata.
-    """
-    # Ubah teks input menjadi huruf kecil dan pisahkan menjadi kata-kata
+# Fungsi utama untuk menggabungkan audio berdasarkan input teks
+def synthesize_text(text, speaker_id="afin"):
     words = text.lower().split()
-    
-    # Siapkan segmen audio kosong sebagai dasar
-    final_audio = AudioSegment.empty()
-    
-    print("\n🔊 Memulai sintesis suara...")
+    output_audio = AudioSegment.silent(duration=0)
+
+    speaker_folder = os.path.join(DATASET_PATH, speaker_id)
+    if not os.path.isdir(speaker_folder):
+        print(f"[!] Folder speaker '{speaker_folder}' tidak ditemukan.")
+        return None
+
+    print(f"[i] Menyintesis teks: {' '.join(words)} (Speaker: {speaker_id})")
+
     for word in words:
-        if word in db:
-            # Jika kata ada di database, pilih salah satu sampel secara acak
-            available_samples = db[word]
-            selected_file = random.choice(available_samples)
-            print(f"   - Menemukan kata '{word}'. Memilih sampel: {os.path.basename(selected_file)}")
-            
-            # Muat file audio yang dipilih
-            audio_segment = AudioSegment.from_wav(selected_file)
-            
-            # Gabungkan (concatenate) ke audio final
-            final_audio += audio_segment
-        else:
-            # Jika kata tidak ditemukan, beri peringatan
-            print(f"   - Peringatan: Kata '{word}' tidak ditemukan dalam database. Kata ini akan dilewati.")
-            
-    return final_audio
-
-# --- Program Utama ---
-if __name__ == "__main__":
-    # 1. Muat database audio saat program dimulai
-    audio_database = load_audio_database(DATABASE_PATH)
-    
-    if audio_database:
-        print("\n--- Program Text-to-Speech Concatenative ---")
-        print("Kata yang tersedia:", ", ".join(sorted(audio_database.keys())))
-        print("Ketik 'keluar' untuk mengakhiri program.")
-        
-        while True:
-            # 2. Minta input dari pengguna
-            try:
-                input_text = input("\nMasukkan kalimat > ")
-            except KeyboardInterrupt:
-                print("\nProgram dihentikan.")
-                break
-
-            if input_text.lower() == 'keluar':
-                print("Sampai jumpa!")
-                break
-            
-            if not input_text.strip():
-                continue
-
-            # 3. Lakukan sintesis suara
-            synthesized_audio = synthesize_speech(input_text, audio_database)
-            
-            # 4. Putar hasilnya jika ada audio yang berhasil dibuat
-            if len(synthesized_audio) > 0:
-                print("Memutar hasil suara...")
-                play(synthesized_audio)
+        if word in word_list:
+            audio = select_best_sample(speaker_folder, word)
+            if audio:
+                output_audio += audio + AudioSegment.silent(duration=100)
             else:
-                print("Tidak ada suara yang dihasilkan karena semua kata tidak ditemukan.")
+                print(f"[!] Sample untuk kata '{word}' tidak ditemukan.")
+        else:
+            print(f"[!] Kata '{word}' tidak ada di kamus.")
+
+    return output_audio
+
+# Main program
+if __name__ == "__main__":
+    # Input dari pengguna
+    input_text = input("Masukkan teks (gunakan kata-kata: Aku, Kamu, Makan, Selamat, Siang, Malam, Pagi, Sore, Kita, Mereka):\n> ")
+    speaker_id = input("Masukkan speaker ID (afin/aul/hani):\n> ").lower()
+
+    if speaker_id not in ['afin', 'aul', 'hani']:
+        print("[!] Speaker ID tidak valid.")
+    else:
+        output = synthesize_text(input_text, speaker_id=speaker_id)
+        if output:
+            filename = f"output_tts_{speaker_id}.wav"
+            output.export(filename, format="wav")
+            print(f"✅ Output disimpan sebagai '{filename}'")
